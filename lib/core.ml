@@ -4,7 +4,7 @@ type 'a parser = { parse : input -> ('a * input, error) result }
 
 let input s = { text = s; pos = 0 }
 let result' a = { parse = (fun inp -> Ok (a, inp)) }
-let zero = { parse = (fun _ -> Error { err = "unexpected error"; pos = -1 }) }
+let zero e = { parse = (fun _ -> Error e) }
 
 let item =
   {
@@ -49,17 +49,21 @@ let ( <* ) (p1 : 'a parser) (p2 : 'b parser) =
         | err -> err);
   }
 
-let bind (f : 'a -> 'b parser) p =
+let bind (f : 'a * int -> 'b parser) p =
   {
     parse =
       (fun inp ->
         match p.parse inp with
-        | Ok (a, inp') -> (f a).parse inp'
+        | Ok (a, inp') -> (f (a, inp.pos)).parse inp'
         | Error e -> Error e);
   }
 
 let sat (f : char -> bool) =
-  bind (fun x -> if f x then result' x else zero) item
+  bind
+    (fun (x, pos) ->
+      if f x then result' x
+      else zero { err = Printf.sprintf "invalid char at %d" pos; pos })
+    item
 
 let char' ch = sat (fun x -> x == ch)
 let digit = sat (function '0' .. '9' -> true | _ -> false)
@@ -83,9 +87,13 @@ let ( <|> ) = plus
 let letter = lower <|> upper
 let alphanum = letter <|> digit
 
-let map (f : 'a -> 'b) p =
-  {
-    parse =
-      (fun inp ->
-        match p.parse inp with Ok (a, inp') -> Ok (f a, inp') | error -> error);
-  }
+let rec string' s : string parser =
+  match String.to_seq s () with
+  | Seq.Nil -> result' ""
+  | Seq.Cons (ch, tail) ->
+      bind
+        (fun _ ->
+          bind
+            (fun _ -> result' (String.of_seq (Seq.cons ch tail)))
+            (string' (String.of_seq tail)))
+        (char' ch)
