@@ -1,0 +1,4 @@
+(executable
+ (public_name cpc)
+ (name main)
+ (libraries cpc))
