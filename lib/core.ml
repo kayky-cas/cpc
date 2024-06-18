@@ -64,7 +64,7 @@ let sat (f : char -> bool) =
   bind
     (fun (x, pos) ->
       if f x then result' x
-      else zero { err = Printf.sprintf "invalid char at %d" pos; pos })
+      else zero { err = Printf.sprintf "expected %c at %d" x pos; pos })
     item
 
 let char' ch = sat (fun x -> x == ch)

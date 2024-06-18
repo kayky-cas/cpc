@@ -1,5 +1,7 @@
 open Core
 
+exception Unreachable
+
 let map (f : 'a -> 'b) p =
   {
     parse =
@@ -24,7 +26,13 @@ let fold_decimal l =
   v
 
 let integer =
-  many (digit |> map (fun ch -> Char.code ch - Char.code '0'))
+  bind
+    (fun (l, pos) ->
+      if List.length l > 0 then result' l
+      else zero { err = "expected integer"; pos })
+    (many (digit |> map (fun ch -> Char.code ch - Char.code '0')))
   |> map fold_decimal
 
-let boolean = string' "true" <|> string' "false"
+let boolean =
+  string' "true" <|> string' "false"
+  |> map (function "true" -> true | "false" -> false | _ -> raise Unreachable)
