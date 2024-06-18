@@ -1,4 +1,6 @@
-(library
+(executable
  (public_name cpc)
+ (name json)
  (preprocess (pps ppx_deriving.show ppx_deriving.ord))
- (name cpc))
+ (libraries cpc))
+

@@ -1,6 +1,7 @@
-type error = { err : string; pos : int }
-type input = { text : string; pos : int }
-type 'a parser = { parse : input -> ('a * input, error) result }
+type error = { err : string; pos : int } [@@deriving show]
+type input = { text : string; pos : int } [@@deriving show]
+type 'a parser_result = ('a * input, error) result [@@deriving show]
+type 'a parser = { parse : input -> 'a parser_result } [@@deriving show]
 
 let input s = { text = s; pos = 0 }
 let result' a = { parse = (fun inp -> Ok (a, inp)) }
@@ -72,7 +73,7 @@ let digit = sat (function '0' .. '9' -> true | _ -> false)
 let lower = sat (function 'a' .. 'z' -> true | _ -> false)
 let upper = sat (function 'A' .. 'Z' -> true | _ -> false)
 
-let plus (p1 : 'a parser) (p2 : 'b parser) =
+let plus p1 p2 =
   {
     parse =
       (fun inp ->

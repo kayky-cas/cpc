@@ -7,6 +7,7 @@ type value_t =
   | Object of (string * value_t) list
   | List of value_t list
   | Boolean of bool
+[@@deriving show]
 
 let pair_to_float (a, b) =
   let a_float = float_of_int a in
@@ -25,10 +26,46 @@ let literal = literal |> map (fun s -> Str s)
 let boolean = boolean |> map (fun b -> Boolean b)
 let space = many (char' ' ' <|> char' '\n' <|> char' '\t')
 
-let value : value_t parser =
-  literal <|> number <|> (* object' <|> list' <|> *) boolean
+let rec value =
+  {
+    parse =
+      (fun inp ->
+        (literal <|> number <|> object' <|> list' <|> boolean).parse inp);
+  }
 
-let entry = Extra.literal <* space <* char' '=' <* space <*> value
+and entry =
+  {
+    parse =
+      (fun inp ->
+        (Extra.literal <* space <* char' ':' <* space <*> value).parse inp);
+  }
 
-let list' =
-  char' '[' *> many (space *> value <* space <* char' ',' <* space) <* char' ']'
+and list' =
+  {
+    parse =
+      (fun inp ->
+        (char' '['
+         *> many
+              (space *> value <* space
+              <* (char' ',' <|> peek (char' ']'))
+              <* space)
+        <* char' ']'
+        |> map (fun l -> List l))
+          .parse
+          inp);
+  }
+
+and object' =
+  {
+    parse =
+      (fun inp ->
+        (char' '{'
+         *> many
+              (space *> entry <* space
+              <* (char' ',' <|> peek (char' '}'))
+              <* space)
+        <* char' '}'
+        |> map (fun o -> Object o))
+          .parse
+          inp);
+  }

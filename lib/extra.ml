@@ -36,3 +36,10 @@ let integer =
 let boolean =
   string' "true" <|> string' "false"
   |> map (function "true" -> true | "false" -> false | _ -> raise Unreachable)
+
+let peek p =
+  {
+    parse =
+      (fun inp ->
+        match p.parse inp with Ok (a, _) -> Ok (a, inp) | Error e -> Error e);
+  }
