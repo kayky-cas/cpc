@@ -30,14 +30,16 @@ let seq (p1 : 'a parser) (p2 : 'b parser) =
 
 let ( <*> ) = seq
 
-let ( *> ) (p1 : 'a parser) (p2 : 'b parser) =
+let ( *> ) (p1 : 'a parser) (p2 : 'b parser) : 'b parser =
   {
     parse =
       (fun inp ->
-        match p1.parse inp with Ok (_, inp') -> p2.parse inp' | err -> err);
+        match p1.parse inp with
+        | Ok (_, inp') -> p2.parse inp'
+        | Error err -> Error err);
   }
 
-let ( <* ) (p1 : 'a parser) (p2 : 'b parser) =
+let ( <* ) (p1 : 'a parser) (p2 : 'b parser) : 'a parser =
   {
     parse =
       (fun inp ->
@@ -45,8 +47,8 @@ let ( <* ) (p1 : 'a parser) (p2 : 'b parser) =
         | Ok (a, inp') -> (
             match p2.parse inp' with
             | Ok (_, inp'') -> Ok (a, inp'')
-            | err -> err)
-        | err -> err);
+            | Error err -> Error err)
+        | Error err -> Error err);
   }
 
 let bind (f : 'a * int -> 'b parser) p =
@@ -70,7 +72,7 @@ let digit = sat (function '0' .. '9' -> true | _ -> false)
 let lower = sat (function 'a' .. 'z' -> true | _ -> false)
 let upper = sat (function 'A' .. 'Z' -> true | _ -> false)
 
-let plus p1 p2 =
+let plus (p1 : 'a parser) (p2 : 'b parser) =
   {
     parse =
       (fun inp ->
@@ -86,6 +88,25 @@ let plus p1 p2 =
 let ( <|> ) = plus
 let letter = lower <|> upper
 let alphanum = letter <|> digit
+
+let many p =
+  {
+    parse =
+      (fun inp ->
+        let l = ref [] in
+        let i = ref inp in
+        let quit_loop = ref false in
+
+        while (not !quit_loop) && String.length !i.text > 0 do
+          match p.parse !i with
+          | Ok (a, inp') ->
+              l := a :: !l;
+              i := inp'
+          | Error _ -> quit_loop := true
+        done;
+
+        Ok (List.rev !l, !i));
+  }
 
 let rec string' s : string parser =
   match String.to_seq s () with
