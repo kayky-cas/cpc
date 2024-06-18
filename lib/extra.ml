@@ -15,6 +15,8 @@ let many_as_string (p : 'a parser) =
   p |> many |> map (fun a -> String.of_seq (List.to_seq a))
 
 let not_char ch = sat (fun x -> x != ch)
+
+(* FIX: when encounter a "\"" *)
 let literal = char' '"' *> many_as_string (not_char '"') <* char' '"'
 
 let fold_decimal l =
