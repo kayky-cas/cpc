@@ -11,13 +11,34 @@ let map (f : 'a -> 'b) p =
         | Error error -> Error error);
   }
 
-let many_as_string (p : 'a parser) =
-  p |> many |> map (fun a -> String.of_seq (List.to_seq a))
+let peek p =
+  {
+    parse =
+      (fun inp ->
+        match p.parse inp with Ok (a, _) -> Ok (a, inp) | Error e -> Error e);
+  }
 
+let many_as_string p = p |> many |> map (fun a -> String.of_seq (List.to_seq a))
 let not_char ch = sat (fun x -> x != ch)
 
-(* FIX: when encounter a "\"" *)
-let literal = char' '"' *> many_as_string (not_char '"') <* char' '"'
+let backslash =
+  {
+    parse =
+      (fun inp ->
+        match (char' '\\').parse inp with
+        | Ok (_, inp') -> (
+            match item.parse inp' with
+            | Ok ('"', inp'') -> Ok ('"', inp'')
+            | Ok ('n', inp'') -> Ok ('\n', inp'')
+            | Ok ('t', inp'') -> Ok ('\t', inp'')
+            | Ok _ ->
+                Error { err = "invalid character after \\"; pos = inp'.pos }
+            | Error e -> Error e)
+        | Error e -> Error e);
+  }
+
+let literal =
+  char' '"' *> many_as_string (backslash <|> not_char '"') <* char' '"'
 
 let fold_decimal l =
   let v, _ =
@@ -38,10 +59,3 @@ let integer =
 let boolean =
   string' "true" <|> string' "false"
   |> map (function "true" -> true | "false" -> false | _ -> raise Unreachable)
-
-let peek p =
-  {
-    parse =
-      (fun inp ->
-        match p.parse inp with Ok (a, _) -> Ok (a, inp) | Error e -> Error e);
-  }
